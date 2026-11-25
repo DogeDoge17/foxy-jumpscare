@@ -2,10 +2,12 @@
   description = "super scary foxy rawr";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+  inputs.nix-appimage.url = "github:ralismark/nix-appimage";
 
   outputs = {
     self,
     nixpkgs,
+    nix-appimage,
   }: let
     forAllSystems = nixpkgs.lib.genAttrs [
       "x86_64-linux"
@@ -78,6 +80,17 @@
           doCheck = false; # Upstream tests need the disabled codecs and audio hardware.
         }));
       in {
+        appimage = nix-appimage.lib.${system}.mkAppImage {
+          program = "${self.packages.${system}.default}/bin/foxy-jumpscare";
+          # Upstream's fallback mounts nix/ onto nix/store, adding an extra directory.
+          apprun = pkgs.pkgsStatic.runCommandCC "AppRun" {} ''
+            mkdir -p "$out/mountroot"
+            cp ${nix-appimage}/appruns/userns-chroot/main.c main.c
+            substituteInPlace main.c --replace-fail \
+              'strprintf("%s/nix", appdir)' 'strprintf("%s/nix/store", appdir)'
+            $CC main.c -o "$out/AppRun"
+          '';
+        };
         default = pkgs.stdenv.mkDerivation {
           pname = "foxy-jumpscare";
           version = "0.1.0";
@@ -86,6 +99,8 @@
             fileset = pkgs.lib.fileset.unions [
               ./CMakeLists.txt
               ./main.c
+              ./spritesheet.png
+              ./jumpscare.mp3
             ];
           };
           strictDeps = true;

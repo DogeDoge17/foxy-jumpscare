@@ -246,7 +246,7 @@ void deinit_wayland() {
 }
 
 int load_image(char **buffer, uint32_t *width, uint32_t *height) {
-    FILE *fp = fopen("spritesheet.png", "rb");
+    FILE *fp = fopen(FOXY_DATA_DIR "/spritesheet.png", "rb");
     if (!fp) {
         fprintf(stderr, "PNG error: %s\n", strerror(errno));
         return -1;
@@ -353,7 +353,7 @@ int start_jumpscare() {
     ma_engine_init(NULL, &engine);
 
     // Load sound
-    ma_sound_init_from_file(&engine, "jumpscare.mp3", 0, NULL, NULL, &sound);
+    ma_sound_init_from_file(&engine, FOXY_DATA_DIR "/jumpscare.mp3", 0, NULL, NULL, &sound);
     ma_sound_start(&sound);
 
     redraw_timer = timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC);

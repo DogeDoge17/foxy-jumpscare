@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 project(foxy-jumpscare VERSION 0.1.0 LANGUAGES C)
+include(GNUInstallDirs)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
@@ -51,6 +52,9 @@ endforeach()
 
 add_executable(foxy-jumpscare main.c ${PROTOCOL_SOURCES})
 target_compile_features(foxy-jumpscare PRIVATE c_std_11)
+target_compile_definitions(foxy-jumpscare PRIVATE
+    FOXY_DATA_DIR="${CMAKE_INSTALL_FULL_DATADIR}/foxy-jumpscare"
+)
 target_include_directories(foxy-jumpscare PRIVATE "${PROTOCOL_DIR}")
 target_link_libraries(foxy-jumpscare PRIVATE
     PkgConfig::CORE PkgConfig::AUDIO_BACKENDS Threads::Threads m ${CMAKE_DL_LIBS}
@@ -72,5 +76,7 @@ if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
     )
 endif()
 
-include(GNUInstallDirs)
 install(TARGETS foxy-jumpscare RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
+install(FILES spritesheet.png jumpscare.mp3
+    DESTINATION "${CMAKE_INSTALL_DATADIR}/foxy-jumpscare"
+)
