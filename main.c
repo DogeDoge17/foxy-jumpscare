@@ -445,10 +445,8 @@ int main(void) {
 
     srand(time(NULL));
     while (true) {
-        size_t seconds = 0;
-        while (rand() % chance != 0) {
-            seconds++;
-        }
+        double u = (rand() + 1.0) / (RAND_MAX + 1.0);
+        size_t seconds = (size_t)(log(u) / log1p(-1.0 / chance));
 
         // printf("jumpscaring in %zu seconds\n", seconds);
         sleep(seconds);
