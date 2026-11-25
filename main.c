@@ -439,16 +439,24 @@ cleanup:
 
 // 1024 by 768
 
-int main(void) {
+int main(int argc, char **argv) {
+    ulong chance = 10000;
 
-    const int chance = 10000;
+    long strtol(const char *nptr, char **endptr, int base);
+    if (argc > 1) {
+        long parsed = atoi(argv[1]);
+
+        if (parsed > 0) {
+            chance = parsed;
+        }
+    }
 
     srand(time(NULL));
     while (true) {
         double u = (rand() + 1.0) / (RAND_MAX + 1.0);
         size_t seconds = (size_t)(log(u) / log1p(-1.0 / chance));
 
-        // printf("jumpscaring in %zu seconds\n", seconds);
+        printf("jumpscaring in %zu seconds\n", seconds);
         sleep(seconds);
         if (start_jumpscare() != 0)
             return EXIT_FAILURE;
