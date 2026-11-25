@@ -7,9 +7,19 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 endif()
 
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(WAYLAND REQUIRED IMPORTED_TARGET wayland-client>=1.20)
-pkg_check_modules(PNG REQUIRED IMPORTED_TARGET libpng>=1.6)
-pkg_check_modules(MINIAUDIO REQUIRED IMPORTED_TARGET miniaudio)
+find_package(Threads REQUIRED)
+set(SHARED_LIBRARY_SUFFIXES "${CMAKE_FIND_LIBRARY_SUFFIXES}")
+set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
+pkg_check_modules(CORE REQUIRED IMPORTED_TARGET
+    wayland-client>=1.20 libpng>=1.6 libffi zlib miniaudio
+)
+foreach(LIBRARY IN LISTS CORE_LINK_LIBRARIES)
+    if(NOT LIBRARY MATCHES "^(m|rt|pthread|dl)$" AND NOT LIBRARY MATCHES "\\.a$")
+        message(FATAL_ERROR "Static library required, but unavailable: ${LIBRARY}")
+    endif()
+endforeach()
+set(CMAKE_FIND_LIBRARY_SUFFIXES "${SHARED_LIBRARY_SUFFIXES}")
+pkg_check_modules(AUDIO_BACKENDS REQUIRED IMPORTED_TARGET libpulse alsa sndio)
 pkg_check_modules(WAYLAND_PROTOCOLS REQUIRED wayland-protocols)
 pkg_check_modules(WLR_PROTOCOLS REQUIRED wlr-protocols)
 pkg_get_variable(WAYLAND_PROTOCOLS_DIR wayland-protocols pkgdatadir)
@@ -43,7 +53,7 @@ add_executable(foxy-jumpscare main.c ${PROTOCOL_SOURCES})
 target_compile_features(foxy-jumpscare PRIVATE c_std_11)
 target_include_directories(foxy-jumpscare PRIVATE "${PROTOCOL_DIR}")
 target_link_libraries(foxy-jumpscare PRIVATE
-    PkgConfig::WAYLAND PkgConfig::PNG PkgConfig::MINIAUDIO
+    PkgConfig::CORE PkgConfig::AUDIO_BACKENDS Threads::Threads m ${CMAKE_DL_LIBS}
 )
 
 set_target_properties(foxy-jumpscare PROPERTIES
@@ -54,9 +64,10 @@ set_target_properties(foxy-jumpscare PROPERTIES
 
 if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(foxy-jumpscare PRIVATE
-        "$<$<OR:$<CONFIG:Release>,$<CONFIG:MinSizeRel>>:-Os;-ffunction-sections;-fdata-sections;-fvisibility=hidden>"
+        "$<$<OR:$<CONFIG:Release>,$<CONFIG:MinSizeRel>>:-Oz;-ffunction-sections;-fdata-sections;-fvisibility=hidden;-fno-unwind-tables;-fno-asynchronous-unwind-tables;-fomit-frame-pointer>"
     )
     target_link_options(foxy-jumpscare PRIVATE
+        "$<$<OR:$<CONFIG:Release>,$<CONFIG:MinSizeRel>>:-Oz>"
         "$<$<OR:$<CONFIG:Release>,$<CONFIG:MinSizeRel>>:LINKER:--gc-sections,--as-needed,-s>"
     )
 endif()

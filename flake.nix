@@ -15,6 +15,68 @@
     packages = forAllSystems (
       system: let
         pkgs = import nixpkgs {inherit system;};
+        smallStatic = package: package.overrideAttrs (old: {
+          dontDisableStatic = true;
+          env = (old.env or {}) // {
+            NIX_CFLAGS_COMPILE = (old.env.NIX_CFLAGS_COMPILE or "")
+              + " -Oz -flto=auto -ffat-lto-objects -ffunction-sections -fdata-sections"
+              + " -fno-unwind-tables -fno-asynchronous-unwind-tables -fomit-frame-pointer";
+          };
+        });
+        staticZlib = smallStatic (pkgs.zlib.override {
+          shared = false;
+          stdenv = pkgs.stdenv;
+        });
+        # Keep upstream flags: LTO makes libffi's callback compilation tests time out.
+        staticFfi = pkgs.libffi.overrideAttrs (old: {
+          dontDisableStatic = true;
+          configureFlags = (old.configureFlags or []) ++ ["--disable-shared" "--enable-static"];
+        });
+        staticPng = smallStatic ((pkgs.libpng.override {zlib = staticZlib;}).overrideAttrs (old: {
+          configureFlags = (old.configureFlags or []) ++ ["--disable-shared" "--enable-static"];
+        }));
+        staticWayland = smallStatic ((pkgs.wayland.override {
+          libffi = staticFfi;
+          withDocumentation = false;
+        }).overrideAttrs (old: {
+          mesonFlags = old.mesonFlags ++ ["-Ddefault_library=static"];
+          separateDebugInfo = false;
+        }));
+        minimalSndfile = pkgs.libsndfile.overrideAttrs (old: {
+          buildInputs = [];
+          configureFlags = (old.configureFlags or []) ++ [
+            "--disable-external-libs"
+            "--disable-mpeg"
+            "--disable-alsa"
+          ];
+          env = (old.env or {}) // {NIX_CFLAGS_LINK = "";};
+        });
+        desktopPulse = pkgs.libpulseaudio.override {libsndfile = minimalSndfile;};
+        staticMiniaudio = smallStatic ((pkgs.miniaudio.override {
+          libpulseaudio = desktopPulse;
+          jackSupport = false;
+        }).overrideAttrs (old: {
+          buildInputs = [desktopPulse pkgs.alsa-lib pkgs.sndio];
+          env = (old.env or {}) // {
+            NIX_CFLAGS_COMPILE = (old.env.NIX_CFLAGS_COMPILE or "")
+              + " -DNDEBUG -DMA_DEFAULT_PREMIX_STACK_SIZE_PER_CHANNEL=16384";
+          };
+          cmakeBuildType = "MinSizeRel";
+          cmakeFlags = old.cmakeFlags ++ [
+            "-DBUILD_SHARED_LIBS=OFF"
+            "-DMINIAUDIO_BUILD_TESTS=OFF"
+            "-DMINIAUDIO_BUILD_EXAMPLES=OFF"
+            "-DMINIAUDIO_NO_LIBVORBIS=ON"
+            "-DMINIAUDIO_NO_LIBOPUS=ON"
+            "-DMINIAUDIO_NO_EXTRA_NODES=ON"
+            "-DMINIAUDIO_NO_ENCODING=ON"
+            "-DMINIAUDIO_NO_WAV=ON"
+            "-DMINIAUDIO_NO_FLAC=ON"
+            "-DMINIAUDIO_NO_GENERATION=ON"
+            "-DCMAKE_C_FLAGS_MINSIZEREL=-Oz"
+          ];
+          doCheck = false; # Upstream tests need the disabled codecs and audio hardware.
+        }));
       in {
         default = pkgs.stdenv.mkDerivation {
           pname = "foxy-jumpscare";
@@ -36,15 +98,14 @@
           buildInputs = with pkgs; [
             wayland-protocols
             wlr-protocols
-            wayland
-            libffi
-            libpng
-            zlib
-            miniaudio
-            libpulseaudio
+            staticWayland
+            staticFfi
+            staticPng
+            staticZlib
+            staticMiniaudio
+            desktopPulse
             alsa-lib
             sndio
-            libjack2
           ];
           cmakeBuildType = "MinSizeRel";
           meta = {
