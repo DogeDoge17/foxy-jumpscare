@@ -441,7 +441,7 @@ cleanup:
 
 int main(void) {
 
-    const int chance = 1000;
+    const int chance = 10000;
 
     srand(time(NULL));
     while (true) {
@@ -449,6 +449,7 @@ int main(void) {
         while (rand() % chance != 0) {
             seconds++;
         }
+
         // printf("jumpscaring in %zu seconds\n", seconds);
         sleep(seconds);
         if (start_jumpscare() != 0)
