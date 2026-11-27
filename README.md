@@ -4,6 +4,7 @@ has a 1/10000 chance every second for withered foxy to jumpscare you. this is
 literally just that terraria mod but for your whole system. i optimized it for
 background idling so it wont actually wake up every second because the time
 until the next scare is predetermined.
+![an animated image of foxy spooking my computer](preview.webp)
 
 ## usage
 
