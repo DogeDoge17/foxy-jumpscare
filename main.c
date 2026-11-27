@@ -23,6 +23,10 @@
 #include <miniaudio/miniaudio.h>
 #include <png.h>
 
+#ifndef FOXY_DATA_DIR
+#define FOXY_DATA_DIR "./"
+#endif
+
 #ifndef NDEBUG
 #define LOG(...) fprintf(stderr, __VA_ARGS__)
 #else
